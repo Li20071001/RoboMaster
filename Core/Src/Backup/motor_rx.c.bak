@@ -1,0 +1,74 @@
+#include "stm32f4xx_hal.h"
+#include "motor_rx.h"
+
+#include <stdio.h>
+
+#include "can.h"
+#include "PID.h"
+#include "tim.h"
+#include "usart.h"
+#include "usart_user.h"
+
+void get_motor_measure(motor_t *gimbal, const uint8_t *data)
+{
+    (gimbal)->last_ecd = (gimbal)->ecd;
+    (gimbal)->ecd = (int16_t)((data)[0] << 8 | (data)[1]);
+    (gimbal)->speed_rpm = (int16_t)((data)[2] << 8 | (data)[3]);
+    (gimbal)->given_current = (int16_t)((data)[4] << 8 | (data)[5]);
+    (gimbal)->temperate = (data)[6];
+}
+
+motor_t gimbal;
+volatile uint32_t last_feed;
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+    CAN_RxHeaderTypeDef rx_header;
+    uint8_t rx_data[8];
+    HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &rx_header, rx_data);
+    switch (rx_header.StdId)
+    {
+        //case CAN_3508_M1_ID:
+        //case CAN_3508_M2_ID:
+        //case CAN_3508_M3_ID:
+        //case CAN_3508_M4_ID:
+        //case CAN_YAW_MOTOR_ID:
+        case CAN_PIT_MOTOR_ID:
+        //case CAN_TRIGGER_MOTOR_ID:
+        {
+            get_motor_measure(&gimbal, rx_data);
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
+    last_feed = HAL_GetTick();
+    //__HAL_TIM_SET_COUNTER(&htim5, 0);
+
+}
+
+void CAN_Init(CAN_HandleTypeDef *hcan, uint32_t filter_bank) {
+    CAN_FilterTypeDef sFilterConfig;
+
+    sFilterConfig.FilterBank = filter_bank;
+    sFilterConfig.FilterBank = 0;
+    sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+    sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+    sFilterConfig.FilterIdHigh = 0x0000;
+    sFilterConfig.FilterIdLow = 0x0000;
+    sFilterConfig.FilterMaskIdHigh = 0x0000;
+    sFilterConfig.FilterMaskIdLow = 0x0000;
+    sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+    sFilterConfig.FilterActivation = ENABLE;
+    sFilterConfig.SlaveStartFilterBank = 14;
+
+    HAL_CAN_ConfigFilter(hcan, &sFilterConfig);
+}
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t size ) {
+    sscanf(receive_message, "motor%d", &target_speed);
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t*)receive_message, sizeof(receive_message));
+}//
+// Created by Lenovo on 2026/10/31.
+//

@@ -1,0 +1,297 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * File Name          : freertos.c
+  * Description        : Code for freertos applications
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "cmsis_os.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
+
+#include "can.h"
+#include "PID.h"
+#include "stm32f4xx_hal.h"
+#include "tim.h"
+#include "usart_user.h"
+#include "KEY.h"
+#include "motor_rx.h"
+#include "PWM_LED.h"
+#include "usart.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
+
+/* USER CODE END Variables */
+/* Definitions for PID */
+osThreadId_t PIDHandle;
+const osThreadAttr_t PID_attributes = {
+  .name = "PID",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for servo */
+osThreadId_t servoHandle;
+const osThreadAttr_t servo_attributes = {
+  .name = "servo",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for PWM */
+osThreadId_t PWMHandle;
+const osThreadAttr_t PWM_attributes = {
+  .name = "PWM",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for USART_RX */
+osThreadId_t USART_RXHandle;
+const osThreadAttr_t USART_RX_attributes = {
+  .name = "USART_RX",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+
+/* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN FunctionPrototypes */
+
+/* USER CODE END FunctionPrototypes */
+
+void PID_control(void *argument);
+void PWM_servo(void *argument);
+void PWM_LED(void *argument);
+void USART_motor_RX(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void configureTimerForRunTimeStats(void);
+unsigned long getRunTimeCounterValue(void);
+
+/* USER CODE BEGIN 1 */
+/* Functions needed when configGENERATE_RUN_TIME_STATS is on */
+__weak void configureTimerForRunTimeStats(void)
+{
+
+}
+
+__weak unsigned long getRunTimeCounterValue(void)
+{
+return 0;
+}
+/* USER CODE END 1 */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of PID */
+  PIDHandle = osThreadNew(PID_control, NULL, &PID_attributes);
+
+  /* creation of servo */
+  servoHandle = osThreadNew(PWM_servo, NULL, &servo_attributes);
+
+  /* creation of PWM */
+  PWMHandle = osThreadNew(PWM_LED, NULL, &PWM_attributes);
+
+  /* creation of USART_RX */
+  USART_RXHandle = osThreadNew(USART_motor_RX, NULL, &USART_RX_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+}
+
+/* USER CODE BEGIN Header_PID_control */
+/**
+  * @brief  Function implementing the PID thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_PID_control */
+void PID_control(void *argument)
+{
+  /* USER CODE BEGIN PID_control */
+  CAN_Init(&hcan1, 0);
+  /* Infinite loop */
+  for(;;)
+  { Control_Loop(target_speed);
+    osDelay(1);
+  }
+  /* USER CODE END PID_control */
+}
+
+/* USER CODE BEGIN Header_PWM_servo */
+/**
+* @brief Function implementing the servo thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_PWM_servo */
+void PWM_servo(void *argument)
+{
+  /* USER CODE BEGIN PWM_servo */
+  HAL_TIM_Base_Start(&htim1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 500);
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 500);
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 500);
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 500);
+  /* Infinite loop */
+  for(;;)
+  { if (KEY_state == 1) {
+    osDelay(20);
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_RESET)
+    { KEY_state = 0;
+      angle += distance * 222;
+      __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, angle);
+    }
+
+    if (angle >= 2450)
+    {
+      angle = 2450;
+      distance = -1;
+    }
+    if (angle <= 500) {
+      angle = 500;
+      distance = 1;
+    }
+  }
+    osDelay(10);
+  }
+  /* USER CODE END PWM_servo */
+}
+
+/* USER CODE BEGIN Header_PWM_LED */
+/**
+* @brief Function implementing the PWM thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_PWM_LED */
+void PWM_LED(void *argument)
+{
+  /* USER CODE BEGIN PWM_LED */
+  uint32_t inter = 0;
+  HAL_TIM_Base_Start(&htim5);
+  HAL_TIM_PWM_Start(&htim5, TIM_CHANNEL_3);
+  /* Infinite loop */
+  for(;;)
+  { inter = HAL_GetTick() - last_feed;
+    //counter = __HAL_TIM_GET_COUNTER(&htim5);
+    if (inter > 1000) {
+      PID_reset(&Speed_PID);
+      __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_3, brightness);
+      brightness += direct * 30;
+
+      if (brightness >= 30000) {
+        brightness = 30000;
+        direct = -1;
+      }
+      if (brightness < 0) {
+        brightness = 0;
+        direct = 1;
+      }
+    }else {
+      __HAL_TIM_SET_COMPARE(&htim5, TIM_CHANNEL_3, 0);
+    }
+    osDelay(1);
+  }
+  /* USER CODE END PWM_LED */
+}
+
+/* USER CODE BEGIN Header_USART_motor_RX */
+/**
+* @brief Function implementing the USART_RX thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_USART_motor_RX */
+void USART_motor_RX(void *argument)
+{
+  /* USER CODE BEGIN USART_motor_RX */
+  MX_CAN1_Init();
+  CAN_Init(&hcan1, 0);
+  HAL_CAN_Start(&hcan1);
+  HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
+  HAL_UART_Transmit(&huart1, (uint8_t*)"Hello\r\n", 7, 1000);
+  HAL_UART_Transmit_DMA(&huart1,(uint8_t*)message,strlen(message));
+  /* Infinite loop */
+  for(;;)
+  {
+    sprintf(message, "电机转速: %drpm\r\n", speed);
+    HAL_UART_Transmit_DMA(&huart1,(uint8_t*)message,strlen(message));
+    osDelay(2000);
+  }
+  /* USER CODE END USART_motor_RX */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+
+/* USER CODE END Application */
+
