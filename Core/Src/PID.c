@@ -1,9 +1,7 @@
-#include "stdio.h"
 #include "stdint.h"
 #include "PID.h"
 #include "gimbal_tx.h"
 #include "motor_rx.h"
-#include "main.h"
 
 volatile int16_t speed,current,temp,position;
 volatile int16_t target_speed;
@@ -47,7 +45,6 @@ void Control_Loop(float target_speed) {
     if (target_val > 25000.f) {
         target_val = 25000.f;
     }
-
     CAN_cmd_gimbal(0, target_val, 0, 0);
 }
 

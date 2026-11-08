@@ -29,7 +29,6 @@
 /* USER CODE BEGIN Includes */
 #include "motor_rx.h"
 #include "string.h"
-#include "usart_user.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -100,7 +99,6 @@ int main(void)
   MX_TIM5_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
 
   /* USER CODE END 2 */
 

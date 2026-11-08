@@ -178,8 +178,6 @@ void PID_control(void *argument)
   PID_Init(&Speed_PID, speed_kp, speed_ki, speed_kd);
   //PID_Init(&Position_PID, position_kp, position_ki, position_kd);
   HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
-  int a = 0;
-  //strcpy((char*)receive_message, "motor+100");
   /* Infinite loop */
   for(;;)
   {

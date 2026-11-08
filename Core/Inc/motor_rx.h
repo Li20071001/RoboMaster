@@ -8,7 +8,6 @@
 #include "stm32f4xx_hal.h"
 
 #define CAN_PIT_MOTOR_ID 0x206
-#define CAN_3508_M1_ID 0x201
 
 typedef struct
 {

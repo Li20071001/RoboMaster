@@ -1,13 +1,10 @@
 #include "stm32f4xx_hal.h"
 #include "motor_rx.h"
-
-#include <stdio.h>
-
-#include "can.h"
-#include "PID.h"
-#include "tim.h"
 #include "usart.h"
 #include "usart_user.h"
+
+motor_t gimbal;
+volatile uint32_t last_feed;
 
 void get_motor_measure(motor_t *gimbal, const uint8_t *data)
 {
@@ -17,9 +14,6 @@ void get_motor_measure(motor_t *gimbal, const uint8_t *data)
     (gimbal)->given_current = (int16_t)((data)[4] << 8 | (data)[5]);
     (gimbal)->temperate = (data)[6];
 }
-
-motor_t gimbal;
-volatile uint32_t last_feed;
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
@@ -45,8 +39,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
         }
     }
     last_feed = HAL_GetTick();
-    //__HAL_TIM_SET_COUNTER(&htim5, 0);
-
 }
 
 void CAN_Init(CAN_HandleTypeDef *hcan, uint32_t filter_bank) {
